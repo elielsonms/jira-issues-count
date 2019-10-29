@@ -42,6 +42,61 @@ public class Main {
 		Period twoWeeks = Period.ofWeeks(2); 
 		
 		
+		//gettingJiraCloud(token, assignees, project, component, twoWeeks);
+		LocalDate initialDate = LocalDate.of(2019, 1, 1);
+		LocalDate endDate = LocalDate.of(2019, 5, 31);
+		String baseUrl = "https://jira.devtools.wexinc.com/rest/api/2/search?fields=assignee&jql=assignee in (W000848, currentUser(), asouza, fneto) AND status changed TO 'DONE' during(%s,%s)";
+		
+		DateTimeFormatter jiraFormat = DateTimeFormatter.ofPattern("YYYY-MM-dd");
+		DateTimeFormatter docsFormat = DateTimeFormatter.ofPattern("MM/dd/YYYY");
+		DateTimeFormatter monthFormat = DateTimeFormatter.ofPattern("MM");
+		
+		Gson gson = new Gson();
+		
+		while(now.compareTo(endDate) >= 0){
+			String url = String.format(baseUrl, initialDate.format(jiraFormat), endDate.format(jiraFormat));
+			
+			System.out.println(url);
+
+			Request request = new Request.Builder()
+		      .url	(url)
+		      .get()
+		      .header("Authorization", "Basic "+token)
+		      .build();
+			
+			Map<String,Integer> usersMap = new HashMap<String,Integer>();
+			int totalTasks = 0;
+		  try (Response response = client.newCall(request).execute()) {
+			  JsonObject root = gson.fromJson(response.body().string(), JsonObject.class);
+			  totalTasks = root.get("issues").getAsJsonArray().size();
+			  
+			  for(JsonElement el : root.get("issues").getAsJsonArray()){
+				  String user = el.getAsJsonObject().get("fields").getAsJsonObject().get("assignee").getAsJsonObject().get("displayName").getAsString();
+				  if(!usersMap.containsKey(user)){
+					  usersMap.put(user,0);
+				  }
+				  usersMap.put(user,usersMap.get(user)+1);
+			  }
+		  }catch (Exception e) {
+			e.printStackTrace();
+		  }	
+		  System.out.println();
+		  System.out.println(String.format("%s - %s = %s tasks ",jiraFormat.format(initialDate), jiraFormat.format(endDate), totalTasks ));
+		  for(String user : usersMap.keySet()){
+			  System.out.println(String.format("%s %s Fleet %s %s",
+					  docsFormat.format(endDate),
+					  monthFormat.format(endDate),
+					  user,
+					  usersMap.get(user)));
+		  }
+		  initialDate = endDate;
+		  endDate = initialDate.plus(twoWeeks);
+		}
+		
+	}
+
+	private static void gettingJiraCloud(String token, String assignees,
+			String project, String component, Period twoWeeks) {
 		LocalDate initialDate = LocalDate.of(2019, 5, 31);
 		LocalDate endDate = initialDate.plus(twoWeeks);
 		LocalDate now = LocalDate.now();
