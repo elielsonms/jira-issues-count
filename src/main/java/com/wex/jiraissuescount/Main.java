@@ -27,11 +27,11 @@ public class Main {
     public static void main(String[] args) throws IOException {
         //Old Jira
 		requestJira(LocalDate.of(2018, 12, 28), LocalDate.of(2019, 5, 31),
-				"https://jira.devtools.wexinc.com/rest/api/2/search?fields=assignee&jql=assignee in (W000848, esilva, asouza, fneto) AND status changed TO 'DONE' during(%s,%s)",
+				"https://jira.devtools.wexinc.com/rest/api/2/search?fields=assignee&jql=assignee in (W000848, esilva, asouza, fneto) AND status changed TO (RESOLVED,DONE) during(%s,%s)",
 				"");
 		//Global Jira
 		requestJira(LocalDate.of(2019, 5, 31),LocalDate.now(),
-				"https://wexinc.atlassian.net/rest/api/2/search/?fields=assignee&jql=assignee in (douglas.lima, elielson.silva, pedro.lourenco, Felix.Neto) AND status changed TO 'DONE' during(%s,%s)",
+				"https://wexinc.atlassian.net/rest/api/2/search/?fields=assignee&jql=assignee in (douglas.lima, elielson.silva, pedro.lourenco, Felix.Neto) AND status changed TO (RESOLVED,DONE) during(%s,%s)",
 				"");
 		System.out.println("end");
 	}
