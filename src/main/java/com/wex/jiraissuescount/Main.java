@@ -3,6 +3,7 @@ package com.wex.jiraissuescount;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import kotlin.Pair;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -27,11 +28,11 @@ public class Main {
     public static void main(String[] args) throws IOException {
         //Old Jira
 		requestJira(LocalDate.of(2018, 12, 28), LocalDate.of(2019, 5, 31),
-				"https://jira.devtools.wexinc.com/rest/api/2/search?fields=assignee&jql=assignee in (W000848, esilva, asouza, fneto) AND status changed TO (RESOLVED,DONE) during(%s,%s)",
+				"https://jira.devtools.wexinc.com/rest/api/2/search?fields=assignee,customfield_10033&jql=project = WOLAPI AND assignee in (W000848, esilva, asouza, fneto) AND status changed TO (RESOLVED,DONE) during(%s,%s)",
 				"");
 		//Global Jira
 		requestJira(LocalDate.of(2019, 5, 31),LocalDate.now(),
-				"https://wexinc.atlassian.net/rest/api/2/search/?fields=assignee&jql=assignee in (douglas.lima, elielson.silva, pedro.lourenco, Felix.Neto) AND status changed TO (RESOLVED,DONE) during(%s,%s)",
+				"https://wexinc.atlassian.net/rest/api/2/search/?fields=assignee,customfield_10024&jql=assignee in (douglas.lima, elielson.silva, pedro.lourenco, Felix.Neto) AND status changed TO (RESOLVED,DONE) during(%s,%s)",
 				"");
 		System.out.println("end");
 	}
@@ -48,30 +49,56 @@ public class Main {
 					.header("Authorization", "Basic " + token)
 					.build();
 
-			Map<String, Integer> usersMap = new HashMap<String, Integer>();
+			Map<String, Integer> usersQtdTaskMap = new HashMap<String, Integer>();
+			Map<String, Integer> usersStoryPointMap = new HashMap<String, Integer>();
 			Response response = client.newCall(request).execute();
 			JsonObject root = gson.fromJson(response.body().string(), JsonObject.class);
 			int totalTasks = root.get("issues").getAsJsonArray().size();
 
 			for (JsonElement el : root.get("issues").getAsJsonArray()) {
-				String user = el.getAsJsonObject().get("fields").getAsJsonObject().get("assignee").getAsJsonObject().get("displayName").getAsString();
-				if (!usersMap.containsKey(user)) {
-					usersMap.put(user, 0);
+				String user = getAssignee(el);
+				Integer storyPoint = getStoryPoint(el);
+
+				if (!usersQtdTaskMap.containsKey(user)) {
+					usersQtdTaskMap.put(user, 0);
+					usersStoryPointMap.put(user, 0);
 				}
-				usersMap.put(user, usersMap.get(user) + 1);
+
+				usersQtdTaskMap.put(user, usersQtdTaskMap.get(user) + storyPoint);
+				usersStoryPointMap.put(user, usersStoryPointMap.get(user) + storyPoint);
 			}
 
 			System.out.println();
-			System.out.println(String.format("%s - %s = %s tasks ", jiraFormat.format(initialDate), jiraFormat.format(endDate), totalTasks));
-			for (Map.Entry<String,Integer> entry : usersMap.entrySet()) {
-				System.out.println(String.format("%s %s Fleet %s %s",
+			System.out.println(String.format("%s - %s = %s tasks ",
+								jiraFormat.format(initialDate),
+								jiraFormat.format(endDate),
+								totalTasks));
+			for (Map.Entry<String,Integer> entry : usersQtdTaskMap.entrySet()) {
+				System.out.println(String.format("%s %s Fleet %s %s %s",
 						docsFormat.format(endDate),
 						monthFormat.format(endDate),
                         entry.getKey(),
-						entry.getValue()));
+						entry.getValue(),
+						usersStoryPointMap.get(entry.getKey())));
 			}
 			initialDate = endDate;
 			endDate = initialDate.plus(twoWeeks);
 		}
+	}
+
+	private static String getAssignee(JsonElement el) {
+		return el.getAsJsonObject().get("fields").getAsJsonObject().get("assignee").getAsJsonObject().get("displayName").getAsString();
+	}
+
+	private static Integer getStoryPoint(JsonElement el) {
+    	JsonObject jObj = el.getAsJsonObject().get("fields").getAsJsonObject();
+    	JsonElement field = null;
+    	if(jObj.has("customfield_10033")){
+			field = jObj.get("customfield_10033");
+		}
+		if(jObj.has("customfield_10024")){
+			field = jObj.get("customfield_10024");
+		}
+		return field == null || field.isJsonNull() ? 1 : field.getAsInt();
 	}
 }
