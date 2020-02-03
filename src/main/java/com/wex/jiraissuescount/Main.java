@@ -114,22 +114,24 @@ public class Main {
 					.build();
 
 			Response response = client.newCall(request).execute();
-			JsonObject root = gson.fromJson(response.body().string(), JsonObject.class);
-			
-			for (JsonElement el : root.get("issues").getAsJsonArray()) {
-				String user = getAssignee(el);
-				Integer storyPoint = getStoryPoint(el);
-				String taskName = getTaskName(el);
-				String taskId = getTaskId(el);
+			if(response.isSuccessful()) {
+				JsonObject root = gson.fromJson(response.body().string(), JsonObject.class);
 
-				JiraTaskDTO task = new JiraTaskDTO();
-				task.setAssignee(user);
-				task.setStoryPoint(jiraStoryPointMap.containsKey(taskId) ? jiraStoryPointMap.get(taskId) : storyPoint);
-				task.setTaskName(taskName);
-				task.setJiraVersion(jiraVersion);
-				task.setTaskId(taskId);
-				
-				list.add(task);
+				for (JsonElement el : root.get("issues").getAsJsonArray()) {
+					String user = getAssignee(el);
+					Integer storyPoint = getStoryPoint(el);
+					String taskName = getTaskName(el);
+					String taskId = getTaskId(el);
+
+					JiraTaskDTO task = new JiraTaskDTO();
+					task.setAssignee(user);
+					task.setStoryPoint(jiraStoryPointMap.containsKey(taskId) ? jiraStoryPointMap.get(taskId) : storyPoint);
+					task.setTaskName(taskName);
+					task.setJiraVersion(jiraVersion);
+					task.setTaskId(taskId);
+
+					list.add(task);
+				}
 			}
 			initialDate = endDate.plus(Period.ofDays(1));
 			endDate = initialDate.plus(twoWeeks).minus(Period.ofDays(1));
